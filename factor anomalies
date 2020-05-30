@@ -1,0 +1,156 @@
+
+install.packages("timetk")
+install.packages("tidyquant")
+install.packages("tidyverse")
+
+rm(list = ls())
+cat("\014")
+getSymbols("ARGT", from="2011-03-04", to="2018-01-01")
+getSymbols("SPY", from="2011-03-04", to="2018-01-01")
+getSymbols("XWD.TO", from="2011-03-04", to="2018-01-01")
+
+f=SPY$SPY.Adjusted
+ARG=ARGT$ARGT.Adjusted
+WORLD=XWD.TO$XWD.TO.Adjusted
+
+
+plot(ARG)
+plot(SPY$SPY.Adjusted)
+
+plotat=cbind(ARG,f)
+
+plot(plotat)
+
+plot(WORLD)
+
+#WEEKLY RETURNS
+WEKar=weeklyReturn(ARG, subset=NULL, type='arithmetic',leading=TRUE)
+WEKf=weeklyReturn(f, subset=NULL, type='arithmetic',leading=TRUE)
+
+
+plot(WEKar)
+plot(WEKf)
+write.xlsx(x, file, sheetName="Sheet1")
+
+#MEAN RETURNS
+meanWEKar=mean(WEKar)
+meanWEKwo=mean(WEKwo)
+
+#RISK FREE RATE   - 1 yr US T bill as of 04/01/2016--> 0.61% annually
+rf=0.61/52
+rf
+
+#WEEKLY EXCESS RETURNS
+WexretAR=(WEKar-rf)
+Wexretf=(WEKf-rf)
+
+Wexretf$dummy <- rep(0,length(Wexretf[,1]))
+for(i in 254:length(Wexretf[,1])){
+  Wexretf$dummy[i]<- 1
+}
+
+interaction <- rep(0,length(Wexretf[,1]))
+for(i in 1:length(Wexretf[,1])){
+  interaction[i] <- Wexretf$weekly.returns[i] * Wexretf$dummy[i]
+}
+interact <- data.frame(interaction) 
+# Volatilites of normal returns
+sdAR=sd(WEKar)
+sdWO=sd(WEKwo)
+
+# Volatilites of excess returns
+sdAR=sd(WexretAR)
+sdWO=sd(WexretWO)
+
+#Corr 1 of normal returns
+cor(WEKar , WEKwo)
+CORR=cor(WEKar , WEKwo)
+
+#beta 1
+betaAR=(CORR*sdAR)/sdWO
+
+#CAPM1 with complete dataset
+capm1=rf+betaAR*(meanWEKwo-rf)
+
+#PARTED DATA - first part
+partarWEK1=WEKar[1:253,]
+partwoWEK1=WEKwo[1:253,]
+#i think the above line is wrong
+
+
+partarRET1=ARG[1:253,]
+
+#PARTED DATA - second part
+partarWEK2=WEKar[253:358,]
+partarRET2=ARG[253:358,]
+
+
+#DO ONLY WEEKLY FROM NOW OWN, disregard other timespans
+MONT=monthlyReturn(ARG, subset=NULL, type='arithmetic',leading=TRUE)
+plot(MONT)
+
+QQ=quarterlyReturn(ARG, subset=NULL, type='arithmetic',leading=TRUE)
+plot(QQ)
+##Now that I have Weekly prices and montly prices: Get returns.
+
+ReturnsOnPricesWeekly <- na.omit(Return.calculate(Prices_weekly, method = "log"))
+plot(ReturnsOnPricesWeekly)
+
+##They turn out to be the same that I did with WEK
+
+
+NROW(na.omit(WEKar))
+NROW(na.omit(WEKwo))
+library(xlsx)
+w(ARG, file, sheetName="Sheet1")
+
+#Beta regression (actually alpha break)!!!
+betaregres=lm(WexretAR ~ Wexretf$weekly.returns)
+summary(betaregres)
+
+betaregres2=lm(WexretAR ~ Wexretf$weekly.returns + Wexretf$dummy + interaction)
+summary(betaregres2)
+
+#For betabreak need dummyinteraction
+betaregres3=lm(WexretAR ~ WexretWO + WexretWO$dummy + WexretWO$dummy:WexretWO)
+coef(betaregres3)
+
+
+#foreloop shit to part data
+empty1WO =rep(0,253)
+empty1AR =rep(0,253)
+
+empty2WO=rep(0,357-253)
+empty2AR=rep(0,357-253)
+
+for(i in 1:length (empty1)) {
+  empty1WO [i] = WexretWO$weekly.returns[i]
+  empty1AR [i] = WexretAR [i]
+}
+
+for(i in 254:length (WexretWO$weekly.returns)) {
+  empty2WO [i-253] = WexretWO$weekly.returns[i]
+  empty2AR[i-253] = WexretAR[i]
+}
+#model parted
+
+modelperiod1=lm(empty1AR ~ empty1WO)
+summary(modelperiod1)
+
+plotti <- cbind(ARG,WORLD)
+ts.plot(plotti)
+
+#manual calc
+COV1=cov(empty1AR , empty1WO)
+Varargie1=var(emtpy1AR)
+Varworldie1=var(empty1WO)
+
+beta1=(COV1)/(Varworldie1)
+
+
+COV2=cov(empty2AR , empty2WO)
+Varargie2=var(empty2AR)
+Varworldie2=var(empty2WO)
+
+beta2=(COV2)/(Varworldie2)
+
